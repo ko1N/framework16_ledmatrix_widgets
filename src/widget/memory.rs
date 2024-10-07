@@ -51,22 +51,31 @@ impl Widget for MemoryWidget {
         self.matrix[7] = 100;
         self.matrix[8] = 20;
 
-        // draw ram usage
-        let ram_usage =
-            (self.used_memory as f32 / self.total_memory as f32 * width as f32) as usize;
         let mut line = width;
+
+        // draw ram usage
+        let ram_usage = self.used_memory as f32 / self.total_memory as f32 * width as f32;
+        let ram_usage_int = ram_usage as usize;
+        let ram_usage_fract = ram_usage - ram_usage_int as f32;
         for x in 0..width {
-            if x <= ram_usage {
+            if x < ram_usage_int {
                 self.matrix[line + x] = ON_FULL;
+            } else if x == ram_usage_int {
+                self.matrix[line + x] = (ON_FULL as f32 * ram_usage_fract).max(10.0) as u8;
             }
         }
 
-        // draw swap usage
-        let swap_usage = (self.used_swap as f32 / self.total_swap as f32 * width as f32) as usize;
         line = 2 * width;
+
+        // draw swap usage
+        let swap_usage = self.used_swap as f32 / self.total_swap as f32 * width as f32;
+        let swap_usage_int = swap_usage as usize;
+        let swap_usage_fract = swap_usage - swap_usage_int as f32;
         for x in 0..width {
-            if x <= swap_usage {
+            if x < swap_usage_int {
                 self.matrix[line + x] = ON_FULL;
+            } else if x == swap_usage_int {
+                self.matrix[line + x] = (ON_FULL as f32 * swap_usage_fract).max(10.0) as u8;
             }
         }
     }

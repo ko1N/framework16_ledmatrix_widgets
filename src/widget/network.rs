@@ -67,22 +67,31 @@ impl Widget for NetworkWidget {
         self.matrix[7] = 100;
         self.matrix[8] = 20;
 
-        // draw accumulated network usage
-        let download_usage =
-            (download as f32 / elapsed_secs / total_download as f32 * width as f32) as usize;
         let mut line = width;
+
+        // draw download
+        let download_usage = download as f32 / elapsed_secs / total_download as f32 * width as f32;
+        let download_usage_int = download_usage as usize;
+        let download_usage_fract = download_usage - download_usage_int as f32;
         for x in 0..width {
-            if x <= download_usage {
+            if x < download_usage_int {
                 self.matrix[line + x] = ON_FULL;
+            } else if x == download_usage_int {
+                self.matrix[line + x] = (ON_FULL as f32 * download_usage_fract).max(10.0) as u8;
             }
         }
 
-        let upload_usage =
-            (upload as f32 / elapsed_secs / total_upload as f32 * width as f32) as usize;
         line = 2 * width;
+
+        // draw upload
+        let upload_usage = upload as f32 / elapsed_secs / total_upload as f32 * width as f32;
+        let upload_usage_int = upload_usage as usize;
+        let upload_usage_fract = upload_usage - upload_usage_int as f32;
         for x in 0..width {
-            if x <= upload_usage {
+            if x < upload_usage_int {
                 self.matrix[line + x] = ON_FULL;
+            } else if x == upload_usage_int {
+                self.matrix[line + x] = (ON_FULL as f32 * upload_usage_fract).max(10.0) as u8;
             }
         }
     }
