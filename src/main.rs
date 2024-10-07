@@ -11,7 +11,7 @@ use std::{
 use clap::Parser;
 use ledmatrix::LedMatrix;
 
-use crate::widget::{AllCPUsWidget, BatteryWidget, ClockWidget, UpdatableWidget};
+use crate::widget::{BatteryWidget, ClockWidget, CpuWidget, MemoryWidget, NetworkWidget, Widget};
 
 #[derive(Parser)]
 #[command(version, about, long_about=None)]
@@ -59,34 +59,38 @@ fn main() {
     match program {
         Program::Default => {
             let mut mats = LedMatrix::detect();
-            if mats.len() == 0 {
+            if mats.is_empty() {
                 println!("No modules found, unable to continue.");
                 exit(1);
             }
 
             // No arguments provided? Start the
             if args().len() <= 1 {
+                let mut cpu = CpuWidget::new(false);
+                let mut memory = MemoryWidget::new();
+                let mut network = NetworkWidget::new();
                 let mut bat = BatteryWidget::new();
-                let mut cpu = AllCPUsWidget::new(false);
                 let mut clock = ClockWidget::new();
-
-                let blank = [[0; 9]; 34];
-
-                if mats.len() == 2 {
-                    mats[1].draw_matrix(blank);
-                }
 
                 loop {
                     bat.update();
+                    memory.update();
+                    network.update();
                     cpu.update();
                     clock.update();
 
-                    let mut matrix = [[0; 9]; 34];
-                    matrix = matrix::emplace(matrix, &mut bat, 0, 0);
-                    matrix = matrix::emplace(matrix, &mut cpu, 0, 5);
-                    matrix = matrix::emplace(matrix, &mut clock, 0, 23);
-                    mats[0].draw_matrix(matrix);
-                    thread::sleep(Duration::from_millis(2000));
+                    let mut matrix1 = [[0; 9]; 34];
+                    matrix1 = matrix::emplace(matrix1, &mut cpu, 0, 2);
+                    matrix1 = matrix::emplace(matrix1, &mut memory, 0, 20);
+                    matrix1 = matrix::emplace(matrix1, &mut network, 0, 25);
+                    matrix1 = matrix::emplace(matrix1, &mut bat, 0, 30);
+                    mats[0].draw_matrix(matrix1);
+
+                    let mut matrix2 = [[0; 9]; 34];
+                    matrix2 = matrix::emplace(matrix2, &mut clock, 0, 2);
+                    mats[1].draw_matrix(matrix2);
+
+                    thread::sleep(Duration::from_millis(500));
                 }
             }
         }

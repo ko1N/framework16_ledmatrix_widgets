@@ -36,21 +36,17 @@ impl LedMatrix {
         // Loop through all available serial ports, save ports that match the LED matrix product name
         let mut found_ledmat: Vec<SerialPortInfo> = vec![];
         for ref sp in sports {
-            // println!("{:?}", sp.port_type);
-            match sp.port_type {
-                SerialPortType::UsbPort(ref info) => {
-                    let info_c = info.clone();
-                    if info_c.vid == 12972 && info_c.pid == 32 {
-                        found_ledmat.push(sp.clone());
-                    }
+            if let SerialPortType::UsbPort(info) = &sp.port_type {
+                let info_c = info.clone();
+                if info_c.vid == 12972 && info_c.pid == 32 {
+                    found_ledmat.push(sp.clone());
                 }
-                _ => {}
             }
         }
 
-        if found_ledmat.len() <= 0 {
+        if found_ledmat.is_empty() {
             println!("No LED matrix modules found.");
-            return vec![]
+            return vec![];
         }
 
         let mut mats: Vec<LedMatrix> = Vec::new();
@@ -60,11 +56,8 @@ impl LedMatrix {
 
         println!("Found LED matrix modules:");
         for i in mats.iter_mut() {
-            println!(
-                "{} - {}",
-                i.port_info.port_name.to_string(),
-                i.get_fw_version()
-            );
+            let fw_version = i.get_fw_version();
+            println!("{} - {}", i.port_info.port_name, fw_version);
         }
 
         mats
@@ -93,12 +86,13 @@ impl LedMatrix {
         let mut buffer: Vec<u8> = vec![];
         buffer.extend_from_slice(CMD_START.as_slice());
         buffer.push(cmd);
-        match params {
-            Some(p) => buffer.extend_from_slice(p),
-            None => {}
-        };
 
-        self.port
+        if let Some(p) = params {
+            buffer.extend_from_slice(p);
+        }
+
+        let _ = self
+            .port
             .write(buffer.as_slice())
             .expect("Failed to send command");
         self.port.flush().unwrap();
@@ -126,7 +120,7 @@ impl LedMatrix {
         let mut buffer: Vec<u8> = vec![0; numbytes];
 
         while self.port.bytes_to_read().unwrap() > 0 {
-            self.port.read(buffer.as_mut_slice()).unwrap();
+            let _ = self.port.read(buffer.as_mut_slice()).unwrap();
         }
 
         Ok(buffer)
