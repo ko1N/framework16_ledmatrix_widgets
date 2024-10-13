@@ -68,7 +68,7 @@ fn main() {
             if args().len() <= 1 {
                 let mut cpu = CpuWidget::new(false);
                 let mut memory = MemoryWidget::new();
-                let mut network = NetworkWidget::with_device("wlan0");
+                let mut network = NetworkWidget::new(&["wlan0".to_string()]);
                 let mut bat = BatteryWidget::new();
                 let mut clock = ClockWidget::new();
 

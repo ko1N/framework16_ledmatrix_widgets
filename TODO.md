@@ -5,5 +5,5 @@
 - music equalizer
 - config to position elements on multiple led matrizes
 - network should show individual interfaces + filtered + averaged
-- webrequest module
+- webrequest / health check module
 

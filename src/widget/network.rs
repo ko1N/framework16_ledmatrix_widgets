@@ -2,9 +2,7 @@ use std::time::Instant;
 
 use sysinfo::Networks;
 
-use crate::matrix::Matrix;
-
-use super::{write_bar_1l, write_char, Shape, Widget, OFF, ON_FULL};
+use super::{write_bar_1l, write_char, Shape, Widget, OFF};
 
 /// Create a widget that displays the ram and swap usage
 pub struct NetworkWidget {
@@ -12,32 +10,17 @@ pub struct NetworkWidget {
     last_update_time: Instant,
     matrix: Vec<u8>,
     shape: Shape,
-    config: NetworkWidgetConfig,
-}
-
-enum NetworkWidgetConfig {
-    Device(String),
-    DeviceList(Vec<String>),
+    devices: Vec<String>,
 }
 
 impl NetworkWidget {
-    pub fn with_device(device: &str) -> Self {
+    pub fn new(devices: &[String]) -> Self {
         Self {
             networks: Networks::new_with_refreshed_list(),
             last_update_time: Instant::now(),
             shape: Shape { x: 9, y: 3 },
             matrix: Vec::new(),
-            config: NetworkWidgetConfig::Device(device.to_string()),
-        }
-    }
-
-    pub fn with_devices(devices: &[String]) -> Self {
-        Self {
-            networks: Networks::new_with_refreshed_list(),
-            last_update_time: Instant::now(),
-            shape: Shape { x: 9, y: 3 },
-            matrix: Vec::new(),
-            config: NetworkWidgetConfig::DeviceList(devices.to_vec()),
+            devices: devices.to_vec(),
         }
     }
 }
@@ -57,10 +40,11 @@ impl Widget for NetworkWidget {
         let total_download = 500u64 * 1024 * 1024 / 8; // 500 mbit/s
         let mut upload = 0;
         let total_upload = 100u64 * 1024 * 1024 / 8; // 100 mbit/s
-        for (_interface_name, data) in self
+        for data in self
             .networks
             .iter()
-            .filter(|(k, _)| *k != "lo" && !k.contains("virbr"))
+            .filter(|(name, _)| self.devices.contains(name))
+            .map(|(_, data)| data)
         {
             download += data.received();
             upload += data.transmitted();

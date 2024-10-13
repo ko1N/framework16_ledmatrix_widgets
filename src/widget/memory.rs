@@ -1,4 +1,4 @@
-use super::{write_bar_1l, write_char, Shape, Widget, OFF, ON_FULL};
+use super::{write_bar_1l, write_char, Shape, Widget, OFF};
 
 /// Create a widget that displays the ram and swap usage
 pub struct MemoryWidget {
