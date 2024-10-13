@@ -44,7 +44,10 @@ pub fn transpose(arr: Matrix) -> [[u8; 34]; 9] {
 ///
 /// Overlay a smaller matrix on a larger matrix with a given position
 ///
-pub fn emplace(orig: Matrix, widget: &mut impl Widget, x: usize, y: usize) -> Matrix {
+pub fn emplace<W>(orig: Matrix, widget: &mut W, x: usize, y: usize) -> Matrix
+where
+    W: Widget + ?Sized,
+{
     // debug_assert!(x as usize + widget.width < 9 && y as usize + widget.height < 34);
     let mut out: [[u8; 9]; 34] = orig;
 

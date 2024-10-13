@@ -1,0 +1,35 @@
+[general]
+brightness = 100
+
+[[widgets]]
+panel = 0
+x = 0
+y = 2
+[widgets.setup.Cpu]
+merge_threads = false
+
+[[widgets]]
+panel = 0
+x = 0
+y = 20
+[widgets.setup.Memory]
+swap = true
+
+[[widgets]]
+panel = 0
+x = 0
+y = 25
+[widgets.setup.Network]
+devices = ["wlan0"]
+
+[[widgets]]
+panel = 0
+x = 0
+y = 30
+[widgets.setup.Battery]
+
+[[widgets]]
+panel = 1
+x = 0
+y = 2
+[widgets.setup.Clock]

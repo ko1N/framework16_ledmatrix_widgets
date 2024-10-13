@@ -12,7 +12,7 @@ pub struct CpuWidget {
 impl CpuWidget {
     pub fn new(merge_threads: bool) -> CpuWidget {
         let mut sys = sysinfo::System::new();
-        sys.refresh_cpu();
+        sys.refresh_cpu_all();
         let num_cpus = sys.cpus().len();
 
         CpuWidget {
@@ -31,7 +31,7 @@ impl CpuWidget {
 impl Widget for CpuWidget {
     fn update(&mut self) {
         // refresh the cpu usage
-        self.sys.refresh_cpu();
+        self.sys.refresh_cpu_all();
 
         for (idx, usage) in self.sys.cpus().iter().enumerate() {
             self.cpu_usages[idx] = usage.cpu_usage().round() as u8;

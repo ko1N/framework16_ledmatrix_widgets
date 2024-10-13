@@ -1,6 +1,6 @@
-pub mod cpu;
 use std::cmp::Ordering;
 
+pub mod cpu;
 pub use cpu::CpuWidget;
 
 pub mod memory;

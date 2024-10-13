@@ -7,13 +7,19 @@ edition = "2021"
 authors = ["Ryan McGee"]
 
 [dependencies]
-battery = "0.7.8"
-clap = { version = "4.5.4", features = ["derive"] }
-chrono = "0.4.38"
+log = "0.4"
+env_logger = "0.11"
+
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+chrono = "0.4"
 #serialport = {version = "4.3.0", default-features = false}
 serialport = "4.3.0"
-sysinfo = "0.30.9"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+battery = "0.7"
+sysinfo = "0.32"
 
 [package.metadata.rpm]
 package = "ledmatrix_widgets"

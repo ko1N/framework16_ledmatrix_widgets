@@ -1,6 +1,3 @@
-mod ledmatrix;
-mod matrix;
-mod widget;
 use std::{
     env::{args, args_os},
     process::exit,
@@ -9,9 +6,15 @@ use std::{
 };
 
 use clap::Parser;
+use config::WidgetConfig;
 use ledmatrix::LedMatrix;
 
 use crate::widget::{BatteryWidget, ClockWidget, CpuWidget, MemoryWidget, NetworkWidget, Widget};
+
+mod config;
+mod ledmatrix;
+mod matrix;
+mod widget;
 
 #[derive(Parser)]
 #[command(version, about, long_about=None)]
@@ -40,10 +43,14 @@ enum Program {
 }
 
 fn main() {
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
     // TODO possible options:
     // each widget + Y placement + LED module (both as default) (for now, x maybe later)
     // Overall brightness
     // update rate
+
+    let config = config::load().unwrap();
 
     let mut program = Program::Default;
 
@@ -64,31 +71,39 @@ fn main() {
                 exit(1);
             }
 
+            // load all widgets
+            let mut widgets: Vec<(WidgetConfig, Box<dyn Widget>)> = Vec::new();
+            for widget in config.widgets.iter() {
+                match &widget.setup {
+                    config::WidgetSetup::Cpu(cfg) => {
+                        widgets.push((widget.clone(), Box::new(CpuWidget::new(cfg.merge_threads))))
+                    }
+                    config::WidgetSetup::Memory(cfg) => {
+                        widgets.push((widget.clone(), Box::new(MemoryWidget::new())));
+                    }
+                    config::WidgetSetup::Network(cfg) => {
+                        widgets.push((widget.clone(), Box::new(NetworkWidget::new(&cfg.devices))));
+                    }
+                    config::WidgetSetup::Battery => {
+                        widgets.push((widget.clone(), Box::new(BatteryWidget::new())));
+                    }
+                    config::WidgetSetup::Clock => {
+                        widgets.push((widget.clone(), Box::new(ClockWidget::new())));
+                    }
+                }
+            }
+
             // No arguments provided? Start the
             if args().len() <= 1 {
-                let mut cpu = CpuWidget::new(false);
-                let mut memory = MemoryWidget::new();
-                let mut network = NetworkWidget::new(&["wlan0".to_string()]);
-                let mut bat = BatteryWidget::new();
-                let mut clock = ClockWidget::new();
-
                 loop {
-                    bat.update();
-                    memory.update();
-                    network.update();
-                    cpu.update();
-                    clock.update();
-
-                    let mut matrix1 = [[0; 9]; 34];
-                    matrix1 = matrix::emplace(matrix1, &mut cpu, 0, 2);
-                    matrix1 = matrix::emplace(matrix1, &mut memory, 0, 20);
-                    matrix1 = matrix::emplace(matrix1, &mut network, 0, 25);
-                    matrix1 = matrix::emplace(matrix1, &mut bat, 0, 30);
-                    mats[0].draw_matrix(matrix1);
-
-                    let mut matrix2 = [[0; 9]; 34];
-                    matrix2 = matrix::emplace(matrix2, &mut clock, 0, 2);
-                    mats[1].draw_matrix(matrix2);
+                    for (idx, mat) in mats.iter_mut().enumerate() {
+                        let mut dots = [[0; 9]; 34];
+                        for (config, widget) in widgets.iter_mut().filter(|(c, _)| c.panel == idx) {
+                            widget.update();
+                            dots = matrix::emplace(dots, widget.as_mut(), config.x, config.y);
+                        }
+                        mat.draw_matrix(dots);
+                    }
 
                     thread::sleep(Duration::from_millis(500));
                 }
