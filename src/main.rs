@@ -6,7 +6,7 @@ use std::{
 };
 
 use clap::Parser;
-use config::WidgetConfig;
+use config::{Config, WidgetConfig};
 use ledmatrix::LedMatrix;
 
 use crate::widget::{BatteryWidget, ClockWidget, CpuWidget, MemoryWidget, NetworkWidget, Widget};
@@ -64,53 +64,12 @@ fn main() {
     }
 
     match program {
-        Program::Default => {
-            let mut mats = LedMatrix::detect();
-            if mats.is_empty() {
-                println!("No modules found, unable to continue.");
-                exit(1);
-            }
-
-            // load all widgets
-            let mut widgets: Vec<(WidgetConfig, Box<dyn Widget>)> = Vec::new();
-            for widget in config.widgets.iter() {
-                match &widget.setup {
-                    config::WidgetSetup::Cpu(cfg) => {
-                        widgets.push((widget.clone(), Box::new(CpuWidget::new(cfg.merge_threads))))
-                    }
-                    config::WidgetSetup::Memory(cfg) => {
-                        widgets.push((widget.clone(), Box::new(MemoryWidget::new())));
-                    }
-                    config::WidgetSetup::Network(cfg) => {
-                        widgets.push((widget.clone(), Box::new(NetworkWidget::new(&cfg.devices))));
-                    }
-                    config::WidgetSetup::Battery => {
-                        widgets.push((widget.clone(), Box::new(BatteryWidget::new())));
-                    }
-                    config::WidgetSetup::Clock => {
-                        widgets.push((widget.clone(), Box::new(ClockWidget::new())));
-                    }
-                }
-            }
-
-            // No arguments provided? Start the
-            if args().len() <= 1 {
-                loop {
-                    for (idx, mat) in mats.iter_mut().enumerate() {
-                        let mut dots = [[0; 9]; 34];
-                        for (config, widget) in widgets.iter_mut().filter(|(c, _)| c.panel == idx) {
-                            widget.update();
-                            dots = matrix::emplace(dots, widget.as_mut(), config.x, config.y);
-                        }
-                        mat.draw_matrix(dots);
-                    }
-
-                    thread::sleep(Duration::from_millis(500));
-                }
-            }
-        }
+        Program::Default => loop {
+            run(&config).ok();
+            thread::sleep(Duration::from_millis(1000));
+        },
         Program::ListMod => {
-            LedMatrix::detect();
+            LedMatrix::detect().expect("unable to detect led matrix");
         }
         Program::ListWid => {
             println!(
@@ -129,4 +88,47 @@ fn main() {
     }
 
     exit(0);
+}
+
+fn run(config: &Config) -> Result<(), String> {
+    let mut mats = LedMatrix::detect()?;
+    if mats.is_empty() {
+        println!("No modules found, unable to continue.");
+        exit(1);
+    }
+
+    // load all widgets
+    let mut widgets: Vec<(WidgetConfig, Box<dyn Widget>)> = Vec::new();
+    for widget in config.widgets.iter() {
+        match &widget.setup {
+            config::WidgetSetup::Cpu(cfg) => {
+                widgets.push((widget.clone(), Box::new(CpuWidget::new(cfg.merge_threads))))
+            }
+            config::WidgetSetup::Memory(cfg) => {
+                widgets.push((widget.clone(), Box::new(MemoryWidget::new())));
+            }
+            config::WidgetSetup::Network(cfg) => {
+                widgets.push((widget.clone(), Box::new(NetworkWidget::new(&cfg.devices))));
+            }
+            config::WidgetSetup::Battery => {
+                widgets.push((widget.clone(), Box::new(BatteryWidget::new())));
+            }
+            config::WidgetSetup::Clock => {
+                widgets.push((widget.clone(), Box::new(ClockWidget::new())));
+            }
+        }
+    }
+
+    loop {
+        for (idx, mat) in mats.iter_mut().enumerate() {
+            let mut dots = [[0; 9]; 34];
+            for (config, widget) in widgets.iter_mut().filter(|(c, _)| c.panel == idx) {
+                widget.update();
+                dots = matrix::emplace(dots, widget.as_mut(), config.x, config.y);
+            }
+            mat.draw_matrix(dots)?;
+        }
+
+        thread::sleep(Duration::from_millis(500));
+    }
 }

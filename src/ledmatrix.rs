@@ -30,7 +30,7 @@ impl LedMatrix {
     /// Find LED matricies connected to the laptop.
     /// Searches for serial ports connected with the LED matrix' product ID & vendor ID
     ///
-    pub fn detect() -> Vec<LedMatrix> {
+    pub fn detect() -> Result<Vec<LedMatrix>, String> {
         let sports = serialport::available_ports().expect("No ports found!");
 
         // Loop through all available serial ports, save ports that match the LED matrix product name
@@ -46,7 +46,7 @@ impl LedMatrix {
 
         if found_ledmat.is_empty() {
             println!("No LED matrix modules found.");
-            return vec![];
+            return Ok(Vec::new());
         }
 
         let mut mats: Vec<LedMatrix> = Vec::new();
@@ -56,11 +56,11 @@ impl LedMatrix {
 
         println!("Found LED matrix modules:");
         for i in mats.iter_mut() {
-            let fw_version = i.get_fw_version();
+            let fw_version = i.get_fw_version()?;
             println!("{} - {}", i.port_info.port_name, fw_version);
         }
 
-        mats
+        Ok(mats)
     }
 
     ///
@@ -133,15 +133,13 @@ impl LedMatrix {
     ///
     /// Get the current firmware version of the LED matrix module.
     ///
-    pub fn get_fw_version(&mut self) -> String {
-        if let Err(err) = self.sendcommand(CHECKFW_CMD, None) {
-            println!("WARN: {err}");
-        }
+    pub fn get_fw_version(&mut self) -> Result<String, String> {
+        self.sendcommand(CHECKFW_CMD, None)?;
         let bytes = self
             .serialread(32, Duration::from_secs(5))
             .unwrap_or(vec![0]);
         if bytes.len() < 3 {
-            return "".to_string();
+            return Ok("".to_string());
         }
 
         let major = bytes[0];
@@ -150,26 +148,23 @@ impl LedMatrix {
         let pre_release = bytes[2] == 1;
 
         let version = format!("{}.{}.{} Pre Release: {}", major, minor, patch, pre_release);
-
-        version
+        Ok(version)
     }
 
     ///
     /// Tell the module to wake up
     ///
-    pub fn wake(&mut self) {
-        if let Err(err) = self.sendcommand(SLEEP_CMD, Some(&[0])) {
-            println!("WARN: {err}");
-        }
+    pub fn wake(&mut self) -> Result<(), String> {
+        self.sendcommand(SLEEP_CMD, Some(&[0]))?;
+        Ok(())
     }
 
     ///
     /// Tell the module to go to sleep
     ///
-    pub fn sleep(&mut self) {
-        if let Err(err) = self.sendcommand(SLEEP_CMD, Some(&[1])) {
-            println!("WARN: {err}")
-        }
+    pub fn sleep(&mut self) -> Result<(), String> {
+        self.sendcommand(SLEEP_CMD, Some(&[1]))?;
+        Ok(())
     }
 
     ///
@@ -180,20 +175,18 @@ impl LedMatrix {
     /// This allows for faster framerates than draw_matrix (with brightnesses) since its
     /// ~0.4% of the data (1/255)
     ///
-    pub fn draw_bool_matrix(&mut self, mat: [[bool; 9]; 34]) {
+    pub fn draw_bool_matrix(&mut self, mat: [[bool; 9]; 34]) -> Result<(), String> {
         let buffer = matrix::encode(mat);
-        if let Err(err) = self.sendcommand(DRAW_CMD, Some(buffer.as_slice())) {
-            println!("WARN: {err}");
-        }
+        self.sendcommand(DRAW_CMD, Some(buffer.as_slice()))?;
+        Ok(())
     }
 
     ///
     /// Sets the brightness of every LED in the module (0=OFF, 255=FULL)
     ///
-    pub fn set_full_brightness(&mut self, val: u8) {
-        if let Err(err) = self.sendcommand(BRIGHTNESS_CMD, Some(&[val])) {
-            println!("WARN: {err}");
-        }
+    pub fn set_full_brightness(&mut self, val: u8) -> Result<(), String> {
+        self.sendcommand(BRIGHTNESS_CMD, Some(&[val]))?;
+        Ok(())
     }
 
     ///
@@ -202,36 +195,36 @@ impl LedMatrix {
     /// Columns are not changed until the commit_col function is run (Allows you to
     /// write all the columns THEN display them at once)
     ///
-    pub fn set_col(&mut self, col: u8, arr: [u8; 34]) {
+    pub fn set_col(&mut self, col: u8, arr: [u8; 34]) -> Result<(), String> {
         let mut vec = vec![];
         vec.push(col);
         vec.extend_from_slice(arr.as_slice());
-        if let Err(err) = self.sendcommand(SET_COL, Some(vec.as_slice())) {
-            println!("WARN: {err}");
-        }
+        self.sendcommand(SET_COL, Some(vec.as_slice()))?;
+        Ok(())
     }
 
     ///
     /// Tell the module to display all the LEDs written to with set_col
     ///
-    pub fn commit_col(&mut self) {
-        if let Err(err) = self.sendcommand(COMMIT_COL, Some(&[])) {
-            println!("WARN: {err}");
-        }
+    pub fn commit_col(&mut self) -> Result<(), String> {
+        self.sendcommand(COMMIT_COL, Some(&[]))?;
+        Ok(())
     }
 
     ///
     /// Display an entire matrix with individual LED brightness values. Slow updating,
     /// but allows for more complex UIs
     ///
-    pub fn draw_matrix(&mut self, mat: [[u8; 9]; 34]) {
+    pub fn draw_matrix(&mut self, mat: [[u8; 9]; 34]) -> Result<(), String> {
         // Transpose array
         let tpose = matrix::transpose(mat);
 
         for i in 0..9 {
-            self.set_col(i, tpose[i as usize]);
+            self.set_col(i, tpose[i as usize])?;
         }
 
-        self.commit_col();
+        self.commit_col()?;
+
+        Ok(())
     }
 }
