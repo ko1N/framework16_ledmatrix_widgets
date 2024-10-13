@@ -45,7 +45,6 @@ impl LedMatrix {
         }
 
         if found_ledmat.is_empty() {
-            println!("No LED matrix modules found.");
             return Ok(Vec::new());
         }
 
@@ -54,10 +53,9 @@ impl LedMatrix {
             mats.push(LedMatrix::new(m));
         }
 
-        println!("Found LED matrix modules:");
         for i in mats.iter_mut() {
             let fw_version = i.get_fw_version()?;
-            println!("{} - {}", i.port_info.port_name, fw_version);
+            log::info!("{} - {}", i.port_info.port_name, fw_version);
         }
 
         Ok(mats)

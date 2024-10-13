@@ -93,8 +93,8 @@ fn main() {
 fn run(config: &Config) -> Result<(), String> {
     let mut mats = LedMatrix::detect()?;
     if mats.is_empty() {
-        println!("No modules found, unable to continue.");
-        exit(1);
+        log::warn!("no led modules found");
+        return Ok(());
     }
 
     // load all widgets
