@@ -1,4 +1,4 @@
-use super::{Shape, Widget, OFF, ON_FULL};
+use super::{write_bar_1l, Shape, Widget, OFF, ON_FULL};
 
 /// Create a widget that displays the usage of all CPU cores, one per row.
 pub struct CpuWidget {
@@ -54,11 +54,13 @@ impl Widget for CpuWidget {
             }
         } else {
             for y in 0..16 {
-                for x in 0..width {
-                    if x <= (self.cpu_usages[y] as f32 * width as f32 / 100f32) as usize {
-                        self.matrix[x + (y * width)] = ON_FULL;
-                    }
-                }
+                write_bar_1l(
+                    &mut self.matrix,
+                    y * width,
+                    width,
+                    self.cpu_usages[y] as f32,
+                    100.0,
+                );
             }
         }
     }

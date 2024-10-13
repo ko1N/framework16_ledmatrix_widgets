@@ -82,7 +82,7 @@ impl LedMatrix {
     /// 2. Send the command byte (as listed above)
     /// 3. Send further parameters for the command
     ///
-    pub fn sendcommand(&mut self, cmd: u8, params: Option<&[u8]>) {
+    pub fn sendcommand(&mut self, cmd: u8, params: Option<&[u8]>) -> Result<(), String> {
         let mut buffer: Vec<u8> = vec![];
         buffer.extend_from_slice(CMD_START.as_slice());
         buffer.push(cmd);
@@ -94,8 +94,12 @@ impl LedMatrix {
         let _ = self
             .port
             .write(buffer.as_slice())
-            .expect("Failed to send command");
-        self.port.flush().unwrap();
+            .map_err(|err| format!("port write failed: {err}"))?;
+        self.port
+            .flush()
+            .map_err(|err| format!("port flush failed: {err}"))?;
+
+        Ok(())
     }
 
     ///
@@ -130,7 +134,9 @@ impl LedMatrix {
     /// Get the current firmware version of the LED matrix module.
     ///
     pub fn get_fw_version(&mut self) -> String {
-        self.sendcommand(CHECKFW_CMD, None);
+        if let Err(err) = self.sendcommand(CHECKFW_CMD, None) {
+            println!("WARN: {err}");
+        }
         let bytes = self
             .serialread(32, Duration::from_secs(5))
             .unwrap_or(vec![0]);
@@ -152,14 +158,18 @@ impl LedMatrix {
     /// Tell the module to wake up
     ///
     pub fn wake(&mut self) {
-        self.sendcommand(SLEEP_CMD, Some(&[0]));
+        if let Err(err) = self.sendcommand(SLEEP_CMD, Some(&[0])) {
+            println!("WARN: {err}");
+        }
     }
 
     ///
     /// Tell the module to go to sleep
     ///
     pub fn sleep(&mut self) {
-        self.sendcommand(SLEEP_CMD, Some(&[1]));
+        if let Err(err) = self.sendcommand(SLEEP_CMD, Some(&[1])) {
+            println!("WARN: {err}")
+        }
     }
 
     ///
@@ -172,14 +182,18 @@ impl LedMatrix {
     ///
     pub fn draw_bool_matrix(&mut self, mat: [[bool; 9]; 34]) {
         let buffer = matrix::encode(mat);
-        self.sendcommand(DRAW_CMD, Some(buffer.as_slice()));
+        if let Err(err) = self.sendcommand(DRAW_CMD, Some(buffer.as_slice())) {
+            println!("WARN: {err}");
+        }
     }
 
     ///
     /// Sets the brightness of every LED in the module (0=OFF, 255=FULL)
     ///
     pub fn set_full_brightness(&mut self, val: u8) {
-        self.sendcommand(BRIGHTNESS_CMD, Some(&[val]));
+        if let Err(err) = self.sendcommand(BRIGHTNESS_CMD, Some(&[val])) {
+            println!("WARN: {err}");
+        }
     }
 
     ///
@@ -192,14 +206,18 @@ impl LedMatrix {
         let mut vec = vec![];
         vec.push(col);
         vec.extend_from_slice(arr.as_slice());
-        self.sendcommand(SET_COL, Some(vec.as_slice()));
+        if let Err(err) = self.sendcommand(SET_COL, Some(vec.as_slice())) {
+            println!("WARN: {err}");
+        }
     }
 
     ///
     /// Tell the module to display all the LEDs written to with set_col
     ///
     pub fn commit_col(&mut self) {
-        self.sendcommand(COMMIT_COL, Some(&[]));
+        if let Err(err) = self.sendcommand(COMMIT_COL, Some(&[])) {
+            println!("WARN: {err}");
+        }
     }
 
     ///
