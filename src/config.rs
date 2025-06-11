@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,10 +45,10 @@ pub struct WidgetNetworkSetup {
     pub devices: Vec<String>,
 }
 
-pub fn load() -> Result<Config, String> {
+pub fn load(path: impl AsRef<Path>) -> Result<Config, String> {
     log::info!("loading configuration");
-    let config_str = std::fs::read_to_string("./config.toml")
-        .map_err(|err| format!("Unable to load config: {}", err))?;
+    let config_str =
+        std::fs::read_to_string(path).map_err(|err| format!("Unable to load config: {}", err))?;
     let config = toml::from_str::<Config>(&config_str)
         .map_err(|err| format!("Unable to load config: {}", err))?;
     Ok(config)

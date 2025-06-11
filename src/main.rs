@@ -19,21 +19,14 @@ mod widget;
 #[derive(Parser)]
 #[command(version, about, long_about=None)]
 struct Cli {
-    // ======== Info about system ========
     #[arg(long)]
-    /// List all connected matrix modules
     list_modules: bool,
 
-    /// List all widgets available for placement
     #[arg(long)]
-    list_widgets: bool, // ======== Program Control ========
-                        // #[arg(long)]
-                        // Start the background service updating the matrix
-                        // start: bool,
+    list_widgets: bool,
 
-                        // #[arg(long)]
-                        // JSON config file path
-                        // config: Option<String>,
+    #[arg(long)]
+    config: Option<String>,
 }
 
 enum Program {
@@ -50,18 +43,16 @@ fn main() {
     // Overall brightness
     // update rate
 
-    let config = config::load().unwrap();
+    let cli = Cli::parse();
+    let program = if cli.list_modules {
+        Program::ListMod
+    } else if cli.list_widgets {
+        Program::ListWid
+    } else {
+        Program::Default
+    };
 
-    let mut program = Program::Default;
-
-    if args_os().len() > 1 {
-        let cli = Cli::parse();
-        if cli.list_modules {
-            program = Program::ListMod;
-        } else if cli.list_widgets {
-            program = Program::ListWid;
-        }
-    }
+    let config = config::load(cli.config.unwrap_or_else(|| "./config.toml".to_string())).unwrap();
 
     match program {
         Program::Default => loop {
@@ -102,7 +93,7 @@ fn run(config: &Config) -> Result<(), String> {
     for widget in config.widgets.iter() {
         match &widget.setup {
             config::WidgetSetup::Cpu(cfg) => {
-                widgets.push((widget.clone(), Box::new(CpuWidget::new(cfg.merge_threads))))
+                widgets.push((widget.clone(), Box::new(CpuWidget::new(cfg.merge_threads))));
             }
             config::WidgetSetup::Memory(cfg) => {
                 widgets.push((widget.clone(), Box::new(MemoryWidget::new())));
