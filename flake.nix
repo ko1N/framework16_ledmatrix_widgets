@@ -38,6 +38,8 @@
 
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.udev ];
+
+            meta.mainProgram = "framework-led-widgets";
           };
         in
         {

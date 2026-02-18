@@ -7,6 +7,7 @@
 }:
 let
   cfg = config.services.framework-led-widgets;
+  executable = lib.getExe' cfg.package "framework-led-widgets";
 
   configFormat = pkgs.formats.toml { };
   generatedConfig = configFormat.generate "framework-led-widgets-config.toml" cfg.settings;
@@ -17,8 +18,8 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = self.packages.${pkgs.system}.framework-led-widgets;
-      defaultText = lib.literalExpression "self.packages.${pkgs.system}.framework-led-widgets";
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.framework-led-widgets;
+      defaultText = lib.literalExpression "self.packages.${pkgs.stdenv.hostPlatform.system}.framework-led-widgets";
       description = "Package that provides the framework-led-widgets binary.";
     };
 
@@ -83,11 +84,11 @@ in
         Description = "Framework LED Matrix widgets";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
-        "X-Restart-Triggers" = generatedConfig;
+        "X-Restart-Triggers" = [ "${generatedConfig}" ];
       };
 
       Service = {
-        ExecStart = "${lib.getExe cfg.package} --config ${generatedConfig}";
+        ExecStart = "${executable} --config ${generatedConfig}";
         Restart = "always";
         RestartSec = 5;
       };

@@ -8,6 +8,7 @@
 let
   cfg = config.programs.framework_led_matrix;
   serialAccessGroup = "framework-led-matrix";
+  executable = lib.getExe' cfg.package "framework-led-widgets";
 
   configFormat = pkgs.formats.toml { };
   generatedConfig = configFormat.generate "framework-led-widgets-config.toml" cfg.settings;
@@ -18,8 +19,8 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = self.packages.${pkgs.system}.framework-led-widgets;
-      defaultText = lib.literalExpression "self.packages.${pkgs.system}.framework-led-widgets";
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.framework-led-widgets;
+      defaultText = lib.literalExpression "self.packages.${pkgs.stdenv.hostPlatform.system}.framework-led-widgets";
       description = "Package that provides the framework-led-widgets binary.";
     };
 
@@ -99,11 +100,11 @@ in
       description = "Framework LED Matrix widgets";
       wantedBy = [ "multi-user.target" ];
       after = [ "systemd-udevd.service" ];
-      unitConfig."X-Restart-Triggers" = generatedConfig;
+      unitConfig."X-Restart-Triggers" = [ "${generatedConfig}" ];
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe cfg.package} --config ${generatedConfig}";
+        ExecStart = "${executable} --config ${generatedConfig}";
         Restart = "always";
         RestartSec = 5;
         User = cfg.user;
