@@ -83,6 +83,7 @@ in
         Description = "Framework LED Matrix widgets";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
+        "X-Restart-Triggers" = generatedConfig;
       };
 
       Service = {

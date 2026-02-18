@@ -75,7 +75,7 @@ in
           }
         ];
       };
-      description = "TOML settings written to /etc/framework-led-widgets/config.toml.";
+      description = "TOML settings consumed from the Nix store.";
       example = {
         general.brightness = 80;
       };
@@ -91,8 +91,6 @@ in
       description = "Framework LED Matrix widgets service user";
     };
 
-    environment.etc."framework-led-widgets/config.toml".source = generatedConfig;
-
     services.udev.extraRules = ''
       SUBSYSTEM=="tty", ATTRS{idVendor}=="32ac", ATTRS{idProduct}=="0020", GROUP="framework-led-matrix", MODE="0660", TAG+="uaccess"
     '';
@@ -101,10 +99,11 @@ in
       description = "Framework LED Matrix widgets";
       wantedBy = [ "multi-user.target" ];
       after = [ "systemd-udevd.service" ];
+      unitConfig."X-Restart-Triggers" = generatedConfig;
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe cfg.package} --config /etc/framework-led-widgets/config.toml";
+        ExecStart = "${lib.getExe cfg.package} --config ${generatedConfig}";
         Restart = "always";
         RestartSec = 5;
         User = cfg.user;
