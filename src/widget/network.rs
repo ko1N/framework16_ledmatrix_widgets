@@ -4,7 +4,7 @@ use sysinfo::Networks;
 
 use super::{write_bar_1l, write_char, Shape, Widget, OFF};
 
-/// Create a widget that displays the ram and swap usage
+/// Create a widget that displays network download/upload throughput.
 pub struct NetworkWidget {
     networks: Networks,
     last_update_time: Instant,
@@ -23,6 +23,15 @@ impl NetworkWidget {
             devices: devices.to_vec(),
         }
     }
+
+    fn throughput(bytes: u64, elapsed_secs: f32) -> f32 {
+        debug_assert!(
+            elapsed_secs > 0.0,
+            "update loop tracks elapsed time with monotonic Instant"
+        );
+        let denom = elapsed_secs.max(0.001);
+        bytes as f32 / denom
+    }
 }
 
 impl Widget for NetworkWidget {
@@ -36,9 +45,9 @@ impl Widget for NetworkWidget {
 
         // accumulate network traffic
         // TODO: filter lo, virbr & docker networks
-        let mut download = 0;
+        let mut download = 0_u64;
         let total_download = 500u64 * 1024 * 1024 / 8; // 500 mbit/s
-        let mut upload = 0;
+        let mut upload = 0_u64;
         let total_upload = 100u64 * 1024 * 1024 / 8; // 100 mbit/s
         for data in self
             .networks
@@ -61,7 +70,7 @@ impl Widget for NetworkWidget {
             &mut self.matrix,
             width,
             width,
-            download as f32 / elapsed_secs,
+            Self::throughput(download, elapsed_secs),
             total_download as f32,
         );
 
@@ -70,12 +79,12 @@ impl Widget for NetworkWidget {
             &mut self.matrix,
             2 * width,
             width,
-            upload as f32 / elapsed_secs,
+            Self::throughput(upload, elapsed_secs),
             total_upload as f32,
         );
     }
 
-    fn get_matrix(&self) -> &Vec<u8> {
+    fn get_matrix(&self) -> &[u8] {
         &self.matrix
     }
 

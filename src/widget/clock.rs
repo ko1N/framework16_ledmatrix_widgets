@@ -64,14 +64,14 @@ const DIGIT_9: &[u8] = [
 
 pub struct ClockWidget {
     matrix: Vec<u8>,
-    time: chrono::DateTime<Local>,
+    shape: Shape,
 }
 
 impl ClockWidget {
+    /// Construct a digital clock widget in HH:MM 24-hour format.
     pub fn new() -> Self {
-        let dt = chrono::offset::Local::now();
         Self {
-            time: dt,
+            shape: Shape { x: 9, y: 11 },
             matrix: Vec::new(),
         }
     }
@@ -88,7 +88,10 @@ impl ClockWidget {
             7 => DIGIT_7,
             8 => DIGIT_8,
             9 => DIGIT_9,
-            _ => DIGIT_0,
+            _ => {
+                debug_assert!(false, "render_number only passes base-10 digits");
+                DIGIT_0
+            }
         }
     }
 
@@ -110,18 +113,18 @@ impl ClockWidget {
 
 impl Widget for ClockWidget {
     fn update(&mut self) {
-        self.time = chrono::offset::Local::now();
+        let time = Local::now();
         self.matrix = Vec::with_capacity(9 * 11);
-        self.matrix.extend(Self::render_number(self.time.hour()));
-        self.matrix.extend(vec![OFF; 9]);
-        self.matrix.extend(Self::render_number(self.time.minute()));
+        self.matrix.extend(Self::render_number(time.hour()));
+        self.matrix.extend([OFF; 9]);
+        self.matrix.extend(Self::render_number(time.minute()));
     }
 
-    fn get_matrix(&self) -> &Vec<u8> {
+    fn get_matrix(&self) -> &[u8] {
         &self.matrix
     }
 
     fn get_shape(&self) -> &Shape {
-        &Shape { x: 9, y: 11 }
+        &self.shape
     }
 }

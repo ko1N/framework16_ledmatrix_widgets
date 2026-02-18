@@ -1,13 +1,9 @@
-use std::{
-    env::{args, args_os},
-    process::exit,
-    thread,
-    time::Duration,
-};
+use std::{process::exit, thread, time::Duration};
 
 use clap::Parser;
 use config::{Config, WidgetConfig};
 use ledmatrix::LedMatrix;
+use matrix::{MATRIX_HEIGHT, MATRIX_WIDTH};
 
 use crate::widget::{BatteryWidget, ClockWidget, CpuWidget, MemoryWidget, NetworkWidget, Widget};
 
@@ -35,6 +31,49 @@ enum Program {
     Default,
 }
 
+fn validate_widget_placements(
+    widgets: &[(WidgetConfig, Box<dyn Widget>)],
+    panel_count: usize,
+) -> Result<(), String> {
+    for (cfg, widget) in widgets {
+        if cfg.panel >= panel_count {
+            return Err(format!(
+                "widget targets panel {} but only {} panel(s) were detected",
+                cfg.panel, panel_count
+            ));
+        }
+
+        let shape = widget.get_shape();
+        let x_end = cfg
+            .x
+            .checked_add(shape.x)
+            .ok_or_else(|| "widget x position overflowed usize".to_string())?;
+        let y_end = cfg
+            .y
+            .checked_add(shape.y)
+            .ok_or_else(|| "widget y position overflowed usize".to_string())?;
+
+        if x_end > MATRIX_WIDTH || y_end > MATRIX_HEIGHT {
+            return Err(format!(
+                "widget at panel {} with origin ({}, {}) and shape {}x{} exceeds panel bounds {}x{}",
+                cfg.panel, cfg.x, cfg.y, shape.x, shape.y, MATRIX_WIDTH, MATRIX_HEIGHT
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_program(cli: &Cli) -> Program {
+    if cli.list_modules {
+        Program::ListMod
+    } else if cli.list_widgets {
+        Program::ListWid
+    } else {
+        Program::Default
+    }
+}
+
 fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
@@ -44,23 +83,29 @@ fn main() {
     // update rate
 
     let cli = Cli::parse();
-    let program = if cli.list_modules {
-        Program::ListMod
-    } else if cli.list_widgets {
-        Program::ListWid
-    } else {
-        Program::Default
-    };
+    let program = parse_program(&cli);
 
-    let config = config::load(cli.config.unwrap_or_else(|| "./config.toml".to_string())).unwrap();
+    let config_path = cli.config.unwrap_or_else(|| "./config.toml".to_string());
+    let config = match config::load(&config_path) {
+        Ok(config) => config,
+        Err(err) => {
+            log::error!("failed to load config at {}: {}", config_path, err);
+            exit(1);
+        }
+    };
 
     match program {
         Program::Default => loop {
-            run(&config).ok();
+            if let Err(err) = run(&config) {
+                log::warn!("widget runner exited early: {err}");
+            }
             thread::sleep(Duration::from_millis(1000));
         },
         Program::ListMod => {
-            LedMatrix::detect().expect("unable to detect led matrix");
+            if let Err(err) = LedMatrix::detect() {
+                log::error!("unable to detect led matrix modules: {err}");
+                exit(1);
+            }
         }
         Program::ListWid => {
             println!(
@@ -95,7 +140,7 @@ fn run(config: &Config) -> Result<(), String> {
             config::WidgetSetup::Cpu(cfg) => {
                 widgets.push((widget.clone(), Box::new(CpuWidget::new(cfg.merge_threads))));
             }
-            config::WidgetSetup::Memory(cfg) => {
+            config::WidgetSetup::Memory(_) => {
                 widgets.push((widget.clone(), Box::new(MemoryWidget::new())));
             }
             config::WidgetSetup::Network(cfg) => {
@@ -110,12 +155,14 @@ fn run(config: &Config) -> Result<(), String> {
         }
     }
 
+    validate_widget_placements(&widgets, mats.len())?;
+
     loop {
         for (idx, mat) in mats.iter_mut().enumerate() {
-            let mut dots = [[0; 9]; 34];
+            let mut dots = [[0; MATRIX_WIDTH]; MATRIX_HEIGHT];
             for (config, widget) in widgets.iter_mut().filter(|(c, _)| c.panel == idx) {
                 widget.update();
-                dots = matrix::emplace(dots, widget.as_mut(), config.x, config.y);
+                dots = matrix::emplace(dots, widget.as_ref(), config.x, config.y);
             }
             mat.draw_matrix(dots)?;
         }

@@ -10,12 +10,12 @@ pub struct CpuWidget {
 }
 
 impl CpuWidget {
-    pub fn new(merge_threads: bool) -> CpuWidget {
+    pub fn new(merge_threads: bool) -> Self {
         let mut sys = sysinfo::System::new();
         sys.refresh_cpu_all();
         let num_cpus = sys.cpus().len();
 
-        CpuWidget {
+        Self {
             shape: match merge_threads {
                 false => Shape { x: 9, y: num_cpus },
                 true => Shape { x: 9, y: 8 },
@@ -24,6 +24,30 @@ impl CpuWidget {
             merge_threads,
             sys,
             matrix: Vec::new(),
+        }
+    }
+
+    fn draw_merged_threads(&mut self, width: usize, height: usize) {
+        for idy in 0..height {
+            let inverse_y = height - (idy + 1);
+            for (idx, chunk) in self.cpu_usages.chunks(2).enumerate() {
+                if idx >= width {
+                    break;
+                }
+                let sum: u16 = chunk.iter().map(|&usage| u16::from(usage)).sum();
+                let usage = sum as f32 / chunk.len() as f32;
+
+                if usage >= (inverse_y * 10) as f32 {
+                    self.matrix[(idy * width) + idx] = ON_FULL;
+                }
+            }
+        }
+    }
+
+    fn draw_per_core_bars(&mut self, width: usize, height: usize) {
+        for row in 0..height {
+            let usage = self.cpu_usages.get(row).copied().unwrap_or(0) as f32;
+            write_bar_1l(&mut self.matrix, row * width, width, usage, 100.0);
         }
     }
 }
@@ -43,29 +67,13 @@ impl Widget for CpuWidget {
         self.matrix = vec![OFF; width * height];
 
         if self.merge_threads {
-            for idy in 0..height {
-                let inverse_y = height - (idy + 1);
-                for (idx, chunk) in self.cpu_usages.chunks(2).enumerate() {
-                    let usage = (chunk[0] + chunk[1]) / 2;
-                    if usage as usize >= inverse_y * 10 {
-                        self.matrix[(idy * width) + idx] = ON_FULL;
-                    }
-                }
-            }
+            self.draw_merged_threads(width, height);
         } else {
-            for y in 0..16 {
-                write_bar_1l(
-                    &mut self.matrix,
-                    y * width,
-                    width,
-                    self.cpu_usages[y] as f32,
-                    100.0,
-                );
-            }
+            self.draw_per_core_bars(width, height);
         }
     }
 
-    fn get_matrix(&self) -> &Vec<u8> {
+    fn get_matrix(&self) -> &[u8] {
         &self.matrix
     }
 

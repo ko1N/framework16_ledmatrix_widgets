@@ -48,7 +48,7 @@ impl Widget for MemoryWidget {
         );
     }
 
-    fn get_matrix(&self) -> &Vec<u8> {
+    fn get_matrix(&self) -> &[u8] {
         &self.matrix
     }
 
