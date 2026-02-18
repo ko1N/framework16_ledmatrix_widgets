@@ -17,29 +17,110 @@ A rust application for creating and displaying widgets on the Framework 16 LED M
 - JSON Configuration file
 
 ### Installation
-Head over to the Releases tab and download for either Ubuntu/Debian (.deb), Fedora (.rpm), Arch (.pkg.tar.xz) or Windows (.msi). 
-If you want to run locally, clone this repo and follow the build instructions below.
+This project is now packaged as a Nix flake.
 
-Or, you can download from [the releases tab](https://github.com/superrm11/ledmatrix_widgets/releases)
+Run the binary directly from the flake:
 
-Note - these installers will only install the executable and add it to your path - you can only run by running the command `ledmatrix_widgets`.
-There are plans to package a .desktop / systemd unit file, and add a shortcut to Startup for Windows, but that will have to wait for 
-future releases.
-
-### Build Instructions
-
-Prereqs:
+```bash
+nix run .
 ```
-cargo
 
-# Arch
-systemd-libs
+Or install it into your profile:
 
-# Ubuntu/Debian
-libudev-dev
-pkg-config
-
-# Fedora
-systemd-devel
+```bash
+nix profile install .
 ```
-In the root directory, run `cargo build` or `cargo run`. This project is cross platform, and works with both Windows and Linux.
+
+### Development
+
+Enter the dev shell with all required build dependencies:
+
+```bash
+nix develop
+```
+
+Then build or run with Cargo:
+
+```bash
+cargo build
+cargo run
+```
+
+### NixOS Module
+
+This flake exports a NixOS module at `nixosModules.default`
+(also `nixosModules.framework-led-matrix`).
+
+Example usage:
+
+```nix
+{
+  inputs.ledmatrix-widgets.url = "github:superrm11/ledmatrix_widgets";
+
+  outputs = { self, nixpkgs, ledmatrix-widgets, ... }: {
+    nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ledmatrix-widgets.nixosModules.default
+        {
+          programs.framework_led_matrix.enable = true;
+        }
+      ];
+    };
+  };
+}
+```
+
+The module automatically:
+- creates a dedicated system user/group for the service
+- installs a systemd service (`framework-led-widgets.service`)
+- writes `/etc/framework-led-widgets/config.toml`
+- installs a udev rule for Framework LED Matrix USB devices
+
+Optional configuration can be provided through
+`programs.framework_led_matrix.settings`.
+
+### Home Manager Module
+
+This flake also exports a Home Manager module at `homeManagerModules.default`
+(also `homeManagerModules.framework-led-matrix`).
+
+Example usage:
+
+```nix
+{
+  inputs.ledmatrix-widgets.url = "github:superrm11/ledmatrix_widgets";
+
+  outputs = { self, nixpkgs, home-manager, ledmatrix-widgets, ... }: {
+    homeConfigurations.me = home-manager.lib.homeManagerConfiguration {
+      pkgs = import nixpkgs { system = "x86_64-linux"; };
+      modules = [
+        ledmatrix-widgets.homeManagerModules.default
+        {
+          services.framework-led-widgets.enable = true;
+        }
+      ];
+    };
+  };
+}
+```
+
+Optional configuration can be provided through
+`services.framework-led-widgets.settings`.
+
+### Device Access (Home Manager / Manual)
+
+If you run via Home Manager (user service) or manually, your user still needs
+access to the serial device (`/dev/ttyACM*` or `/dev/ttyUSB*`).
+
+On NixOS, this usually means adding your user to `dialout`:
+
+```nix
+users.users.<your-username>.extraGroups = [ "dialout" ];
+```
+
+Check the current owner/group with:
+
+```bash
+ls -l /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
+```

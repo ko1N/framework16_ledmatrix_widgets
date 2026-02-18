@@ -20,12 +20,3 @@ serialport = "4.3.0"
 
 battery = "0.7"
 sysinfo = "0.32"
-
-[package.metadata.rpm]
-package = "ledmatrix_widgets"
-
-[package.metadata.rpm.cargo]
-buildflags = ["--release"]
-
-[package.metadata.rpm.targets]
-ledmatrix_widgets = { path = "/usr/bin/ledmatrix_widgets" }
